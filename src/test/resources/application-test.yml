@@ -1,0 +1,27 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:trilha;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+app:
+  security:
+    jwt:
+      secret: TEST_SECRET_MUST_HAVE_AT_LEAST_32_CHARACTERS_LONG
+      expiration-minutes: 60
+      issuer: unipar-trilha-api-test
+    cors:
+      allowed-origins: "*"
+      allowed-methods: "GET,POST,PUT,DELETE,OPTIONS"
+      allowed-headers: "*"
+      exposed-headers: "Authorization"
+      allow-credentials: false
+      max-age: 3600
