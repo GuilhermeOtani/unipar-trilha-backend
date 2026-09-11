@@ -379,11 +379,13 @@ Todos os erros usam `Content-Type: application/problem+json`.
 
 Status utilizados:
 
-- `400`: JSON ou campos inválidos.
+- `400`: JSON, enum, data, identificador, parâmetro ou campo inválido.
 - `401`: token ausente, inválido ou credencial incorreta.
 - `403`: papel ou vínculo sem permissão.
-- `404`: recurso inexistente ou não visível ao usuário.
-- `409`: regra de negócio, versão duplicada, datas ou estado incompatível.
+- `404`: recurso ou rota inexistente, ou recurso não visível ao usuário.
+- `405`: método HTTP não permitido pela rota.
+- `409`: regra de negócio, duplicidade ou restrição de integridade.
+- `415`: tipo de conteúdo não suportado pela rota.
 
 ## Migrations
 
@@ -426,6 +428,15 @@ A suíte automatizada usa H2 no modo PostgreSQL e executa Flyway do zero.
 - assinatura e validação do token com a chave configurada;
 - rejeição do mesmo token quando validado por outra chave.
 
+Os testes de tratamento de erro cobrem via MockMvc:
+
+- JSON malformado;
+- enum, data e identificador inválidos;
+- parâmetro obrigatório ausente;
+- rota inexistente;
+- duplicidade conhecida e violação de integridade do banco;
+- `Content-Type: application/problem+json` em todas essas respostas.
+
 Também foi realizada validação manual do JAR no perfil `prod`: sem segredo a
 inicialização foi interrompida com a mensagem esperada; com segredo válido o
 health respondeu `{"status":"UP"}` usando PostgreSQL.
@@ -433,7 +444,7 @@ health respondeu `{"status":"UP"}` usando PostgreSQL.
 Resultado validado em 11/09/2026:
 
 ```text
-Tests run: 7, Failures: 0, Errors: 0, Skipped: 0
+Tests run: 15, Failures: 0, Errors: 0, Skipped: 0
 ```
 
 ## Ajustes feitos em relação ao planejamento inicial
@@ -445,6 +456,7 @@ Tests run: 7, Failures: 0, Errors: 0, Skipped: 0
 - A V6 cria sessão e tentativa de uma vez; ela não é reeditada na etapa 4.2.
 - O endpoint de início/retomada retorna sempre `200`, pois a mesma chamada pode criar ou devolver uma sessão existente.
 - BE-001: o fallback público de `JWT_SECRET` foi removido da configuração base e mantido apenas em `dev`; `prod` agora exige uma chave com ao menos 32 bytes.
+- BE-004: falhas conhecidas do cliente deixaram de cair no handler genérico `500` e agora usam códigos `400`, `404`, `405`, `409` ou `415` em RFC 7807.
 - A integração real com Flutter continua pendente e deve seguir exatamente os contratos deste README.
 
 ## Checklist para o frontend
