@@ -99,19 +99,6 @@ Variáveis disponíveis:
 | `SPRING_PROFILES_ACTIVE` | `dev` |
 | `CORS_ALLOWED_ORIGINS` | `*` |
 
-O valor padrão de `JWT_SECRET` existe somente no perfil `dev`. O perfil `test`
-usa uma chave exclusiva de teste. No perfil `prod`, `JWT_SECRET` é obrigatório e
-deve possuir ao menos 32 bytes; a aplicação interrompe a inicialização com uma
-mensagem clara quando a variável está ausente, vazia ou curta demais.
-
-Exemplo de inicialização em produção:
-
-```powershell
-$env:SPRING_PROFILES_ACTIVE="prod"
-$env:JWT_SECRET="substitua-por-um-segredo-aleatorio-com-32-bytes-ou-mais"
-mvn spring-boot:run
-```
-
 Comandos:
 
 ```bash
@@ -379,13 +366,11 @@ Todos os erros usam `Content-Type: application/problem+json`.
 
 Status utilizados:
 
-- `400`: JSON, enum, data, identificador, parâmetro ou campo inválido.
+- `400`: JSON ou campos inválidos.
 - `401`: token ausente, inválido ou credencial incorreta.
 - `403`: papel ou vínculo sem permissão.
-- `404`: recurso ou rota inexistente, ou recurso não visível ao usuário.
-- `405`: método HTTP não permitido pela rota.
-- `409`: regra de negócio, duplicidade ou restrição de integridade.
-- `415`: tipo de conteúdo não suportado pela rota.
+- `404`: recurso inexistente ou não visível ao usuário.
+- `409`: regra de negócio, versão duplicada, datas ou estado incompatível.
 
 ## Migrations
 
@@ -420,31 +405,10 @@ A suíte automatizada usa H2 no modo PostgreSQL e executa Flyway do zero.
 - bloqueio de aluno em recurso do professor;
 - RFC 7807 para `400`, `401` e `403`.
 
-`JwtProfileStartupTest` cobre:
-
-- bloqueio da inicialização de `prod` sem `JWT_SECRET` válido;
-- inicialização de `prod` com segredo válido;
-- manutenção do segredo local no perfil `dev`;
-- assinatura e validação do token com a chave configurada;
-- rejeição do mesmo token quando validado por outra chave.
-
-Os testes de tratamento de erro cobrem via MockMvc:
-
-- JSON malformado;
-- enum, data e identificador inválidos;
-- parâmetro obrigatório ausente;
-- rota inexistente;
-- duplicidade conhecida e violação de integridade do banco;
-- `Content-Type: application/problem+json` em todas essas respostas.
-
-Também foi realizada validação manual do JAR no perfil `prod`: sem segredo a
-inicialização foi interrompida com a mensagem esperada; com segredo válido o
-health respondeu `{"status":"UP"}` usando PostgreSQL.
-
-Resultado validado em 11/09/2026:
+Resultado validado em 09/09/2026:
 
 ```text
-Tests run: 15, Failures: 0, Errors: 0, Skipped: 0
+Tests run: 4, Failures: 0, Errors: 0, Skipped: 0
 ```
 
 ## Ajustes feitos em relação ao planejamento inicial
@@ -455,8 +419,6 @@ Tests run: 15, Failures: 0, Errors: 0, Skipped: 0
 - A V3 cria toda a estrutura de rascunho antes das implementações 2.2/2.3; ela não é reeditada depois.
 - A V6 cria sessão e tentativa de uma vez; ela não é reeditada na etapa 4.2.
 - O endpoint de início/retomada retorna sempre `200`, pois a mesma chamada pode criar ou devolver uma sessão existente.
-- BE-001: o fallback público de `JWT_SECRET` foi removido da configuração base e mantido apenas em `dev`; `prod` agora exige uma chave com ao menos 32 bytes.
-- BE-004: falhas conhecidas do cliente deixaram de cair no handler genérico `500` e agora usam códigos `400`, `404`, `405`, `409` ou `415` em RFC 7807.
 - A integração real com Flutter continua pendente e deve seguir exatamente os contratos deste README.
 
 ## Checklist para o frontend
