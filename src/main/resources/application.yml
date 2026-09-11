@@ -29,7 +29,6 @@ springdoc:
 app:
   security:
     jwt:
-      secret: ${JWT_SECRET:CHANGE_ME_DEV_SECRET_USE_AT_LEAST_32_CHARS_FOR_HS256}
       expiration-minutes: ${JWT_EXPIRATION_MINUTES:480}
       issuer: unipar-trilha-api
     cors:

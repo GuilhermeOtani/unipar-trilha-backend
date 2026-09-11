@@ -15,3 +15,9 @@ spring:
 logging:
   level:
     br.unipar.trilha: INFO
+
+app:
+  security:
+    jwt:
+      # Sem fallback: valor ausente ou menor que 32 bytes impede a inicialização.
+      secret: ${JWT_SECRET:}
