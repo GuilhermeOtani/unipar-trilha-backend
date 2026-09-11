@@ -405,35 +405,10 @@ A suíte automatizada usa H2 no modo PostgreSQL e executa Flyway do zero.
 - bloqueio de aluno em recurso do professor;
 - RFC 7807 para `400`, `401` e `403`.
 
-### BE-008 — Infraestrutura, autenticação e usuários
-
-Etapa realizada: completar a cobertura de QA da infraestrutura e dos itens 1.1, 1.2 e 1.3 do plano. Não houve mudança de endpoints, DTOs, migrations ou regras de produção; o contrato utilizado pelo frontend permanece o mesmo.
-
-`InfraestruturaAutenticacaoUsuariosIntegrationTest` cobre:
-
-- health público com status `UP`;
-- login real de `ADMINISTRADOR`, `PROFESSOR` e `ALUNO`, assinatura JWT e identidade retornada por `/usuarios/me`;
-- token ausente, malformado, com assinatura inválida e expirado retornando `401`;
-- administrador criando usuários dos três perfis, persistência da senha criptografada e listagem filtrada por perfil;
-- professor e aluno recebendo `403` ao criar/listar usuários, sem gravação indevida;
-- acesso anônimo à criação/listagem recebendo `401`;
-- login duplicado recebendo `409`, preservando o usuário existente;
-- ausência do campo de senha nas respostas e formato Problem Details nos erros verificados.
-
-`DadosIniciaisSeederIntegrationTest` executa o seed real duas vezes e verifica usuários, disciplina, turma, vínculo do professor e matrícula do aluno. IDs e hashes das senhas permanecem iguais, sem duplicidades. O seed automático continua exclusivo de `dev`; o teste chama sua implementação explicitamente dentro de uma transação com rollback no H2.
-
-Os novos testes utilizam serviços, repositórios, banco e filtros de segurança reais, sem simular o usuário autenticado. O token expirado é assinado com a chave de teste e uma data passada, sem esperar o tempo de expiração. Não é necessário iniciar PostgreSQL nem alterar o banco de desenvolvimento.
-
-Executar a suíte completa no terminal, na raiz do backend:
-
-```powershell
-mvn "-Dspring.profiles.active=test" clean verify
-```
-
-Resultado validado em 11/09/2026:
+Resultado validado em 09/09/2026:
 
 ```text
-Tests run: 20, Failures: 0, Errors: 0, Skipped: 0
+Tests run: 4, Failures: 0, Errors: 0, Skipped: 0
 ```
 
 ## Ajustes feitos em relação ao planejamento inicial
