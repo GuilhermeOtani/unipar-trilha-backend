@@ -25,6 +25,11 @@ public class AlunoController {
         return distribuicaoService.listarParaAluno();
     }
 
+    @GetMapping("/distribuicoes/{id}/caminho")
+    public CaminhoAlunoResponse caminho(@PathVariable Long id) {
+        return distribuicaoService.obterCaminho(id);
+    }
+
     @PostMapping("/distribuicoes/{id}/sessoes")
     public SessaoResponse iniciarOuRetomar(@PathVariable Long id) {
         return aprendizagemService.iniciarOuRetomar(id);

@@ -14,6 +14,10 @@ Professor cria e publica uma trilha
 
 Este arquivo usa exatamente as mesmas etapas do `../PLANO_IMPLEMENTACAO_FRONTEND.md`. A conclusão de uma etapa exige integração com o frontend real e regressão das etapas anteriores.
 
+### Estado em 14/09/2026
+
+Os contratos do ciclo principal estão implementados e ligados ao Flutter de produção. Foram acrescentadas, sem nova migration, as consultas de rascunhos/publicações do professor, distribuições por turma, catálogo ampliado e caminho do aluno. A suíte backend possui 24 testes aprovados; a suíte Flutter possui 123 testes aprovados e um teste externo opcional ignorado.
+
 ## 2. Regra central de conclusão
 
 Uma etapa não está pronta apenas porque o endpoint funciona no Swagger.
@@ -157,12 +161,15 @@ Os nomes abaixo são obrigatórios nos dois projetos.
 | `POST /usuarios` | administrador | cadastrar usuário |
 | `GET /usuarios?perfil=` | administrador | listar por perfil |
 | `GET /professor/contexto` | professor | consultar disciplina e turma |
+| `GET /trilhas` | professor | listar os próprios rascunhos e publicações |
 | `POST /trilhas` | professor | criar rascunho básico |
 | `GET /trilhas/{id}` | professor dono | carregar rascunho completo |
 | `PUT /trilhas/{id}` | professor dono | salvar árvore completa |
 | `POST /trilhas/{id}/publicacoes` | professor dono | publicar snapshot |
 | `POST /distribuicoes` | professor vinculado | distribuir versão |
+| `GET /distribuicoes?turmaId={id}` | professor vinculado e criador | listar distribuições da turma |
 | `GET /aluno/distribuicoes` | aluno matriculado | listar trilhas disponíveis |
+| `GET /aluno/distribuicoes/{id}/caminho` | aluno matriculado | listar módulos e status das lições |
 | `POST /aluno/distribuicoes/{id}/sessoes` | aluno matriculado | iniciar/retomar sessão |
 | `GET /aluno/sessoes/{id}` | aluno dono | consultar sessão |
 | `POST /aluno/sessoes/{id}/respostas` | aluno dono | responder desafio |
@@ -408,7 +415,8 @@ Aceite integrado: frontend distribui V1 sem informar IDs manualmente.
 **Responsável:** B2, revisão B3. **Par:** F3.
 
 - Implementar catálogo filtrado por matrícula e período.
-- Retornar resumo, totais e progresso zero sem sessão.
+- Retornar resumo, totais, progresso, `sessaoId`, datas e `prazoEncerrado`.
+- Implementar o caminho ordenado com lições `CONCLUIDA`, `ATUAL` ou `BLOQUEADA`.
 - Garantir ausência de resposta correta no JSON.
 
 Aceite da Etapa 3: aluno vê a trilha distribuída; Etapas 1 e 2 continuam funcionando.
@@ -423,6 +431,8 @@ Aceite da Etapa 3: aluno vê a trilha distribuída; Etapas 1 e 2 continuam funci
 - Implementar inicialmente a entidade de sessão e o endpoint de início/retomada.
 - Garantir uma sessão por aluno/distribuição.
 - Retornar desafio atual sem resposta correta.
+- Permitir continuação de sessão existente depois do prazo e retornar `409` para nova sessão vencida.
+- Bloquear consulta e resposta de sessão incompleta quando `ativo=false`, preservando histórico concluído.
 
 Aceite integrado: “Começar” abre o desafio e uma nova abertura retoma a sessão.
 

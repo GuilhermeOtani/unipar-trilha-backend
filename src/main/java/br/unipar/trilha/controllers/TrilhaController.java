@@ -11,6 +11,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/trilhas")
 @RequiredArgsConstructor
@@ -20,6 +22,11 @@ import org.springframework.web.bind.annotation.*;
 public class TrilhaController {
     private final TrilhaService trilhaService;
     private final PublicacaoService publicacaoService;
+
+    @GetMapping
+    public List<TrilhaResumoProfessorResponse> listar() {
+        return trilhaService.listar();
+    }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)

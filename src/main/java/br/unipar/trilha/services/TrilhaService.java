@@ -3,6 +3,7 @@ package br.unipar.trilha.services;
 import br.unipar.trilha.dtos.TrilhaConteudoRequest;
 import br.unipar.trilha.dtos.TrilhaCreateRequest;
 import br.unipar.trilha.dtos.TrilhaResponse;
+import br.unipar.trilha.dtos.TrilhaResumoProfessorResponse;
 import br.unipar.trilha.entities.*;
 import br.unipar.trilha.enums.Perfil;
 import br.unipar.trilha.enums.StatusTrilha;
@@ -11,6 +12,7 @@ import br.unipar.trilha.exceptions.RecursoNaoEncontradoException;
 import br.unipar.trilha.exceptions.RegraNegocioException;
 import br.unipar.trilha.repositories.DisciplinaRepository;
 import br.unipar.trilha.repositories.TrilhaRepository;
+import br.unipar.trilha.repositories.TrilhaVersaoRepository;
 import br.unipar.trilha.repositories.VinculoProfessorRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -24,6 +26,7 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class TrilhaService {
     private final TrilhaRepository trilhaRepository;
+    private final TrilhaVersaoRepository versaoRepository;
     private final DisciplinaRepository disciplinaRepository;
     private final VinculoProfessorRepository vinculoRepository;
     private final UsuarioAutenticadoService autenticadoService;
@@ -46,6 +49,14 @@ public class TrilhaService {
     public TrilhaResponse buscar(Long id) {
         Usuario professor = autenticadoService.exigirPerfil(Perfil.PROFESSOR);
         return toResponse(buscarDoProfessor(id, professor.getId()));
+    }
+
+    @Transactional(readOnly = true)
+    public List<TrilhaResumoProfessorResponse> listar() {
+        Usuario professor = autenticadoService.exigirPerfil(Perfil.PROFESSOR);
+        return trilhaRepository.findByProfessorIdOrderByAtualizadoEmDesc(professor.getId()).stream()
+                .map(this::toResumo)
+                .toList();
     }
 
     @Transactional
@@ -156,6 +167,16 @@ public class TrilhaService {
                 trilha.getDisciplina().getId(), trilha.getDisciplina().getNome(), trilha.getProfessor().getId(),
                 trilha.getModulos().stream().map(this::toResponse).toList(),
                 trilha.getCriadoEm(), trilha.getAtualizadoEm());
+    }
+
+    private TrilhaResumoProfessorResponse toResumo(Trilha trilha) {
+        var publicacoes = versaoRepository.findByTrilhaIdOrderByNumeroVersaoDesc(trilha.getId()).stream()
+                .map(versao -> new TrilhaResumoProfessorResponse.PublicacaoResumo(
+                        versao.getId(), versao.getNumeroVersao(), versao.getPublicadaEm()))
+                .toList();
+        return new TrilhaResumoProfessorResponse(trilha.getId(), trilha.getTitulo(), trilha.getDescricao(),
+                trilha.getStatus(), trilha.getDisciplina().getId(), trilha.getDisciplina().getNome(),
+                trilha.getAtualizadoEm(), publicacoes);
     }
 
     private TrilhaResponse.ModuloResponse toResponse(Modulo modulo) {

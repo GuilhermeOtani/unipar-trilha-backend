@@ -13,27 +13,18 @@ O projeto é novo e usa o mesmo padrão de organização por camada técnica do 
 
 ## Estado atual
 
-Todas as etapas planejadas do **backend** foram implementadas. Uma etapa do produto só poderá ser considerada totalmente concluída depois que o frontend correspondente consumir a API real.
+Backend e frontend possuem os contratos e jornadas do ciclo principal implementados. O frontend de produção consome a API real; mocks existem somente em testes e no preview isolado.
 
-| Item | Entrega backend | Estado backend | Aceite com frontend |
-|---|---|---|---|
-| 1.1 | Spring Boot, perfis, Flyway, Swagger, health, CORS e auditoria | concluído | pendente |
-| 1.2 | usuários, login JWT, segurança e seeds | concluído | pendente |
-| 1.3 | perfil corrente, cadastro e listagem por perfil | concluído | pendente |
-| 2.1 | disciplina, turma, vínculos, matrículas e contexto do professor | concluído | pendente |
-| 2.2 | criação do rascunho da trilha | concluído | pendente |
-| 2.3 | árvore módulo/lição/desafio/opção | concluído | pendente |
-| 2.4 | consulta, edição e ownership | concluído | pendente |
-| 2.5 | publicação de snapshots imutáveis V1, V2, ... | concluído | pendente |
-| 3.1 | distribuição de versão publicada | concluído | pendente |
-| 3.2 | catálogo do aluno sem respostas corretas | concluído | pendente |
-| 4.1 | início e retomada da sessão | concluído | pendente |
-| 4.2 | tentativas, correção e feedback | concluído | pendente |
-| 4.3 | progresso e conclusão persistidos | concluído | pendente |
-| 5.1 | indicadores da turma e dificuldades | concluído | pendente |
-| 5.2 | preservação do histórico de versões | concluído e testado | pendente |
-| 6.1 | teste automatizado do ciclo completo | concluído | pendente manual |
-| 6.2 | geração do JAR e configuração final | concluído | pendente build do app |
+| Área | Entrega | Estado |
+|---|---|---|
+| Infraestrutura | Spring Boot, perfis, Flyway, Swagger, health, CORS, Hibernate e auditoria | concluído |
+| Autenticação | usuários, JWT, segurança, seeds, perfil corrente e gestão administrativa | concluído |
+| Autoria | contexto, rascunhos, árvore completa, ownership e versões imutáveis | concluído |
+| Distribuição | criação e listagem isolada por professor/turma | concluído |
+| Aluno | catálogo, caminho, sessão, tentativas, feedback, retomada e conclusão | concluído |
+| Prazo e ativação | retomada após prazo, bloqueio de nova sessão e bloqueio por `ativo=false` | concluído |
+| Acompanhamento | indicadores e histórico de versões | concluído |
+| Validação | 24 testes backend e 123 testes frontend | concluído automaticamente |
 
 ## Tecnologias
 
@@ -138,12 +129,15 @@ O seed roda somente com perfil `dev` e é idempotente.
 | `POST` | `/usuarios` | administrador |
 | `GET` | `/usuarios?perfil=ALUNO` | administrador |
 | `GET` | `/professor/contexto` | professor |
+| `GET` | `/trilhas` | professor; somente seus rascunhos |
 | `POST` | `/trilhas` | professor |
 | `GET` | `/trilhas/{id}` | professor dono |
 | `PUT` | `/trilhas/{id}` | professor dono |
 | `POST` | `/trilhas/{id}/publicacoes` | professor dono |
 | `POST` | `/distribuicoes` | professor vinculado |
+| `GET` | `/distribuicoes?turmaId={id}` | professor vinculado e criador |
 | `GET` | `/aluno/distribuicoes` | aluno matriculado |
+| `GET` | `/aluno/distribuicoes/{id}/caminho` | aluno matriculado |
 | `POST` | `/aluno/distribuicoes/{id}/sessoes` | aluno matriculado |
 | `GET` | `/aluno/sessoes/{id}` | aluno dono |
 | `POST` | `/aluno/sessoes/{id}/respostas` | aluno dono |
@@ -188,6 +182,10 @@ POST /trilhas
 ```
 
 A resposta contém `id`, `status=RASCUNHO`, disciplina, professor, datas e `modulos=[]`.
+
+### Listar rascunhos do professor
+
+`GET /trilhas` devolve somente trilhas pertencentes ao professor autenticado. Cada item contém `id`, `titulo`, `descricao`, `status`, disciplina, `atualizadoEm` e `publicacoes` ordenadas da mais recente para a mais antiga, com `versaoId`, `numeroVersao` e `publicadaEm`.
 
 ### Salvar conteúdo completo
 
@@ -265,12 +263,30 @@ GET /aluno/distribuicoes
     "numeroVersao": 1,
     "totalDesafios": 3,
     "percentualProgresso": 0,
-    "concluida": false
+    "concluida": false,
+    "sessaoId": null,
+    "disponivelDe": "2026-09-15T00:00:00",
+    "disponivelAte": null,
+    "prazoEncerrado": false
   }]
 }
 ```
 
 Esse endpoint nunca devolve respostas corretas.
+
+### Caminho do aluno
+
+`GET /aluno/distribuicoes/{id}/caminho` retorna a identificação da distribuição e da versão, progresso, módulos ordenados e lições com `totalDesafios`, `desafiosConcluidos` e status `CONCLUIDA`, `ATUAL` ou `BLOQUEADA`.
+
+A primeira lição incompleta é a atual. As seguintes ficam bloqueadas. O cálculo considera desafios respondidos corretamente ao menos uma vez e o JSON não contém opções nem indicadores de resposta correta.
+
+### Prazo e distribuição inativa
+
+- Uma sessão iniciada pode ser retomada e concluída depois de `disponivelAte`.
+- Uma nova sessão depois do prazo retorna `409`.
+- Uma distribuição vencida só permanece no catálogo do aluno quando já existe sessão.
+- `ativo=false` bloqueia consulta, retomada e respostas de sessões incompletas.
+- Sessões concluídas continuam consultáveis como histórico mesmo com a distribuição inativa.
 
 ### Iniciar ou retomar
 
@@ -405,10 +421,12 @@ A suíte automatizada usa H2 no modo PostgreSQL e executa Flyway do zero.
 - bloqueio de aluno em recurso do professor;
 - RFC 7807 para `400`, `401` e `403`.
 
-Resultado validado em 09/09/2026:
+Também são testados isolamento das listagens por professor, ordem V2/V1, caminho antes/durante/depois da prática, continuação após prazo, bloqueio de nova sessão vencida, distribuição inativa e ausência de respostas corretas no caminho.
+
+Resultado validado em 14/09/2026:
 
 ```text
-Tests run: 4, Failures: 0, Errors: 0, Skipped: 0
+Tests run: 24, Failures: 0, Errors: 0, Skipped: 0
 ```
 
 ## Ajustes feitos em relação ao planejamento inicial
@@ -419,7 +437,8 @@ Tests run: 4, Failures: 0, Errors: 0, Skipped: 0
 - A V3 cria toda a estrutura de rascunho antes das implementações 2.2/2.3; ela não é reeditada depois.
 - A V6 cria sessão e tentativa de uma vez; ela não é reeditada na etapa 4.2.
 - O endpoint de início/retomada retorna sempre `200`, pois a mesma chamada pode criar ou devolver uma sessão existente.
-- A integração real com Flutter continua pendente e deve seguir exatamente os contratos deste README.
+- Os novos contratos de listagem, catálogo ampliado e caminho são calculados com as entidades existentes; nenhuma migration nova foi necessária.
+- O Flutter de produção foi ligado a todos os contratos; `main_preview.dart` continua isolado para demonstração visual.
 
 ## Checklist para o frontend
 
@@ -429,7 +448,10 @@ Tests run: 4, Failures: 0, Errors: 0, Skipped: 0
 - Usar IDs como inteiros.
 - Usar `turmas` de `/professor/contexto` para escolher disciplina/turma.
 - Guardar o `versaoId` devolvido na publicação.
+- Usar `GET /trilhas` para reencontrar rascunhos e versões sem estado local.
+- Usar `GET /distribuicoes?turmaId=` para mostrar o histórico real da turma.
 - Não procurar `correta` no DTO do aluno.
+- Não procurar opções no contrato de caminho; ele descreve módulos e lições, não desafios.
 - Usar o progresso devolvido pelo backend, sem recalcular na tela.
 - Recarregar `/aluno/distribuicoes` depois de uma resposta/conclusão.
 - Exibir `detail` e `errors` dos Problem Details de forma amigável.

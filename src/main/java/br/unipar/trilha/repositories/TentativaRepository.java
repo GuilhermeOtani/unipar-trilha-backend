@@ -11,6 +11,9 @@ public interface TentativaRepository extends JpaRepository<Tentativa, Long> {
     @Query("select count(distinct t.desafio.id) from Tentativa t where t.sessao.id = :sessaoId and t.correta = true")
     long contarDesafiosAcertados(@Param("sessaoId") Long sessaoId);
 
+    @Query("select distinct t.desafio.id from Tentativa t where t.sessao.id = :sessaoId and t.correta = true")
+    List<Long> listarIdsDesafiosAcertados(@Param("sessaoId") Long sessaoId);
+
     @Query("select count(t) from Tentativa t where t.sessao.distribuicao.turma.id = :turmaId")
     long contarTentativas(@Param("turmaId") Long turmaId);
 
