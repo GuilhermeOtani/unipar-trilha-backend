@@ -18,6 +18,8 @@ Este arquivo usa exatamente as mesmas etapas do `../PLANO_IMPLEMENTACAO_FRONTEND
 
 Os contratos do ciclo principal estão implementados e ligados ao Flutter de produção. Foram acrescentadas, sem nova migration, as consultas de rascunhos/publicações do professor, distribuições por turma, catálogo ampliado e caminho do aluno. A suíte backend possui 24 testes aprovados; a suíte Flutter possui 123 testes aprovados e um teste externo opcional ignorado.
 
+O aceite manual do ciclo inteiro em Web/Android com PostgreSQL real continua pendente e será feito pela equipe; os testes automatizados não o substituem.
+
 ## 2. Regra central de conclusão
 
 Uma etapa não está pronta apenas porque o endpoint funciona no Swagger.

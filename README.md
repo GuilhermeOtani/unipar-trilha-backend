@@ -455,3 +455,15 @@ Tests run: 24, Failures: 0, Errors: 0, Skipped: 0
 - Usar o progresso devolvido pelo backend, sem recalcular na tela.
 - Recarregar `/aluno/distribuicoes` depois de uma resposta/conclusão.
 - Exibir `detail` e `errors` dos Problem Details de forma amigável.
+
+## Aceite manual pela equipe
+
+Os 24 testes backend e os 123 testes Flutter validam contratos e regressões, mas **não equivalem ao aceite manual do fluxo completo em Web/Android contra PostgreSQL**. A equipe fará esse roteiro após subir a versão atualizada dos dois projetos:
+
+1. Administrador lista e cria usuários; contas novas não recebem automaticamente matrícula ou vínculo acadêmico.
+2. Professor de desenvolvimento cria e reabre rascunho, salva árvore, publica V1 e distribui para a turma piloto.
+3. Aluno de desenvolvimento encontra a versão, erra, acerta, faz logout/login, retoma e conclui.
+4. Professor confere indicadores, publica V2 e verifica que tentativas/distribuição anteriores continuam na V1.
+5. Repetir com uma nova trilha ou versão, sem limpar o banco. Conferir continuação da sessão iniciada antes do prazo e `409` para sessão nova depois dele. A regra `ativo=false` pode ser conferida por alteração controlada da distribuição no banco; o MVP não possui endpoint de desativação.
+
+Para falhas, registrar rota, perfil, status HTTP e `detail` do Problem Details. Não editar migrations já aplicadas para corrigir contratos novos.
