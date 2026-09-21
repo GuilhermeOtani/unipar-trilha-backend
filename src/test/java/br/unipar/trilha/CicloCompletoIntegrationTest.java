@@ -38,6 +38,7 @@ class CicloCompletoIntegrationTest {
     @Autowired DistribuicaoRepository distribuicaoRepository;
     @Autowired PasswordEncoder passwordEncoder;
 
+    private Usuario administrador;
     private Usuario professor;
     private Usuario aluno;
     private Disciplina disciplina;
@@ -45,6 +46,9 @@ class CicloCompletoIntegrationTest {
 
     @BeforeEach
     void prepararContextoAcademico() {
+        administrador = usuarioRepository.save(Usuario.builder()
+                .login("admin.teste").nome("Administrador Teste")
+                .senha(passwordEncoder.encode("admin123")).perfil(Perfil.ADMINISTRADOR).ativo(true).build());
         professor = usuarioRepository.save(Usuario.builder()
                 .login("professor.teste").nome("Professor Teste")
                 .senha(passwordEncoder.encode("prof123")).perfil(Perfil.PROFESSOR).ativo(true).build());
@@ -309,6 +313,104 @@ class CicloCompletoIntegrationTest {
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(jsonPath("$.errors.titulo").exists())
                 .andExpect(jsonPath("$.errors.disciplinaId").exists());
+    }
+
+    @Test
+    void jsonMalformadoRetorna400ProblemDetail() throws Exception {
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"login\":\"aluno.teste\",\"senha\":"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.title").value("Requisição inválida"));
+    }
+
+    @Test
+    void enumInvalidoRetorna400ProblemDetail() throws Exception {
+        String tokenAdmin = login(administrador.getLogin(), "admin123");
+
+        mockMvc.perform(get("/usuarios")
+                        .header("Authorization", bearer(tokenAdmin))
+                        .param("perfil", "GESTOR"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.title").value("Parâmetro inválido"))
+                .andExpect(jsonPath("$.detail").value("O parâmetro 'perfil' possui valor inválido."));
+    }
+
+    @Test
+    void dataInvalidaRetorna400ProblemDetail() throws Exception {
+        String tokenProfessor = login(professor.getLogin(), "prof123");
+
+        mockMvc.perform(post("/distribuicoes")
+                        .header("Authorization", bearer(tokenProfessor))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"versaoId":1,"turmaId":1,"disponivelDe":"data-invalida"}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.detail")
+                        .value("O valor do campo 'disponivelDe' possui formato inválido."));
+    }
+
+    @Test
+    void identificadorInvalidoRetorna400ProblemDetail() throws Exception {
+        String tokenProfessor = login(professor.getLogin(), "prof123");
+
+        mockMvc.perform(get("/trilhas/{id}", "abc")
+                        .header("Authorization", bearer(tokenProfessor)))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.detail").value("O parâmetro 'id' possui valor inválido."));
+    }
+
+    @Test
+    void parametroObrigatorioAusenteRetorna400ProblemDetail() throws Exception {
+        String tokenAdmin = login(administrador.getLogin(), "admin123");
+
+        mockMvc.perform(get("/usuarios")
+                        .header("Authorization", bearer(tokenAdmin)))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.title").value("Parâmetro obrigatório ausente"))
+                .andExpect(jsonPath("$.detail")
+                        .value("O parâmetro obrigatório 'perfil' não foi informado."));
+    }
+
+    @Test
+    void rotaInexistenteRetorna404ProblemDetail() throws Exception {
+        String tokenProfessor = login(professor.getLogin(), "prof123");
+
+        mockMvc.perform(get("/rota-inexistente")
+                        .header("Authorization", bearer(tokenProfessor)))
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.title").value("Rota não encontrada"))
+                .andExpect(jsonPath("$.instance").value("/rota-inexistente"));
+    }
+
+    @Test
+    void duplicidadeConhecidaRetorna409ProblemDetail() throws Exception {
+        String tokenAdmin = login(administrador.getLogin(), "admin123");
+        String usuario = """
+                {"login":"usuario.repetido","nome":"Usuário Repetido",\
+                "senha":"senha123","perfil":"ALUNO"}
+                """;
+
+        mockMvc.perform(post("/usuarios")
+                        .header("Authorization", bearer(tokenAdmin))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(usuario))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/usuarios")
+                        .header("Authorization", bearer(tokenAdmin))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(usuario))
+                .andExpect(status().isConflict())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.title").value("Regra de negócio violada"));
     }
 
     private String login(String login, String senha) throws Exception {
