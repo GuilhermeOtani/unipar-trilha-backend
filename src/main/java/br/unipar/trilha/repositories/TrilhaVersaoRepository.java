@@ -5,7 +5,11 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
+
 public interface TrilhaVersaoRepository extends JpaRepository<TrilhaVersao, Long> {
     @Query("select coalesce(max(v.numeroVersao), 0) from TrilhaVersao v where v.trilha.id = :trilhaId")
     int maiorNumeroVersao(@Param("trilhaId") Long trilhaId);
+
+    List<TrilhaVersao> findByTrilhaIdOrderByNumeroVersaoDesc(Long trilhaId);
 }

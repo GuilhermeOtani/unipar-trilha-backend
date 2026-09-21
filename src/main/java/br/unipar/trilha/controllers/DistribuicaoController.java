@@ -11,6 +11,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/distribuicoes")
 @RequiredArgsConstructor
@@ -19,6 +21,11 @@ import org.springframework.web.bind.annotation.*;
 @Tag(name = "Distribuições")
 public class DistribuicaoController {
     private final DistribuicaoService distribuicaoService;
+
+    @GetMapping
+    public List<DistribuicaoResponse> listar(@RequestParam Long turmaId) {
+        return distribuicaoService.listarParaProfessor(turmaId);
+    }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)

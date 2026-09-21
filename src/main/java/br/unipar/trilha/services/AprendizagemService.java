@@ -30,9 +30,15 @@ public class AprendizagemService {
     @Transactional
     public SessaoResponse iniciarOuRetomar(Long distribuicaoId) {
         Usuario aluno = autenticadoService.exigirPerfil(Perfil.ALUNO);
-        Distribuicao distribuicao = buscarDistribuicaoDisponivel(distribuicaoId, aluno.getId());
-        SessaoAprendizagem sessao = sessaoRepository.findByDistribuicaoIdAndAlunoId(distribuicaoId, aluno.getId())
-                .orElseGet(() -> criarSessao(distribuicao, aluno));
+        Distribuicao distribuicao = buscarDistribuicaoDoAluno(distribuicaoId, aluno.getId());
+        var existente = sessaoRepository.findByDistribuicaoIdAndAlunoId(distribuicaoId, aluno.getId());
+        if (existente.isPresent()) {
+            SessaoAprendizagem sessao = existente.get();
+            validarDistribuicaoAtivaParaSessaoIncompleta(sessao);
+            return toResponse(sessao);
+        }
+        validarNovaSessao(distribuicao);
+        SessaoAprendizagem sessao = criarSessao(distribuicao, aluno);
         return toResponse(sessao);
     }
 
@@ -41,6 +47,7 @@ public class AprendizagemService {
         Usuario aluno = autenticadoService.exigirPerfil(Perfil.ALUNO);
         SessaoAprendizagem sessao = sessaoRepository.findByIdAndAlunoId(sessaoId, aluno.getId())
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Sessão não encontrada."));
+        validarDistribuicaoAtivaParaSessaoIncompleta(sessao);
         return toResponse(sessao);
     }
 
@@ -49,6 +56,7 @@ public class AprendizagemService {
         Usuario aluno = autenticadoService.exigirPerfil(Perfil.ALUNO);
         SessaoAprendizagem sessao = sessaoRepository.findByIdAndAlunoId(sessaoId, aluno.getId())
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Sessão não encontrada."));
+        validarDistribuicaoAtivaParaSessaoIncompleta(sessao);
         if (sessao.getStatus() == StatusSessao.CONCLUIDA) {
             throw new RegraNegocioException("A sessão já foi concluída.");
         }
@@ -101,18 +109,31 @@ public class AprendizagemService {
                 .build());
     }
 
-    private Distribuicao buscarDistribuicaoDisponivel(Long id, Long alunoId) {
-        Distribuicao distribuicao = distribuicaoRepository.findByIdAndAtivoTrue(id)
+    private Distribuicao buscarDistribuicaoDoAluno(Long id, Long alunoId) {
+        Distribuicao distribuicao = distribuicaoRepository.findById(id)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Distribuição não encontrada."));
         if (!matriculaRepository.existsByAlunoIdAndTurmaId(alunoId, distribuicao.getTurma().getId())) {
             throw new RecursoNaoEncontradoException("Distribuição não encontrada para o aluno.");
         }
+        return distribuicao;
+    }
+
+    private void validarNovaSessao(Distribuicao distribuicao) {
+        if (!Boolean.TRUE.equals(distribuicao.getAtivo())) {
+            throw new RegraNegocioException("A distribuição foi desativada e não aceita novas sessões.");
+        }
         LocalDateTime agora = LocalDateTime.now();
         if (distribuicao.getDisponivelDe().isAfter(agora)
                 || (distribuicao.getDisponivelAte() != null && !distribuicao.getDisponivelAte().isAfter(agora))) {
-            throw new RegraNegocioException("A distribuição não está disponível neste momento.");
+            throw new RegraNegocioException("O prazo para iniciar esta distribuição está encerrado.");
         }
-        return distribuicao;
+    }
+
+    private void validarDistribuicaoAtivaParaSessaoIncompleta(SessaoAprendizagem sessao) {
+        if (!Boolean.TRUE.equals(sessao.getDistribuicao().getAtivo())
+                && sessao.getStatus() != StatusSessao.CONCLUIDA) {
+            throw new RegraNegocioException("A distribuição foi desativada e esta sessão não pode continuar.");
+        }
     }
 
     private SessaoResponse toResponse(SessaoAprendizagem sessao) {

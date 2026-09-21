@@ -1,5 +1,6 @@
 package br.unipar.trilha.dtos;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 public record CatalogoAlunoResponse(List<Item> distribuicoes) {
@@ -10,7 +11,11 @@ public record CatalogoAlunoResponse(List<Item> distribuicoes) {
             Integer numeroVersao,
             int totalDesafios,
             int percentualProgresso,
-            boolean concluida
+            boolean concluida,
+            Long sessaoId,
+            LocalDateTime disponivelDe,
+            LocalDateTime disponivelAte,
+            boolean prazoEncerrado
     ) {
     }
 }
